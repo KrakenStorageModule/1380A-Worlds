@@ -32,4 +32,7 @@ void NegativeRedSafeElim();
 void NegativeRedSafeQual();
 
 void PositiveRedSafeQual();
+void RedSAWP();
+
+
 extern int color;

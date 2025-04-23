@@ -45,8 +45,8 @@ void initialize() {
   ez::as::auton_selector.autons_add({
       {"Red Negative Elim (No Rush) [1+6]",  NegativeRedSafeElim},
       {"Red Negative Qual (No Rush) [1+6]", NegativeRedSafeQual},
-      {"Red Positive Qual (No Rush) [1+6]", PositiveRedSafeQual},
-      {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets},
+      {"Red Positive Qual (No Rush) [1+2+1]", PositiveRedSafeQual},
+      {"Red Solo AWP [1+3+2]", RedSAWP}
   });
 
   // Initialize chassis and auton selector

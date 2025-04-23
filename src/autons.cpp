@@ -16,7 +16,7 @@ const int SWING_SPEED = 110;
 void default_constants() {
   // P, I, D, and Start I
   chassis.pid_drive_constants_set(20.0, 0.0, 110.0);         // Fwd/rev constants, used for odom and non odom motions
-  chassis.pid_heading_constants_set(7.0, 0.0, 20.0);        // Holds the robot straight while going forward without odom
+  chassis.pid_heading_constants_set(7.0, 0.0, 20.0);         // Holds the robot straight while going forward without odom
   chassis.pid_turn_constants_set(3.0, 0.05, 20.0, 15.0);     // Turn in place constants
   chassis.pid_swing_constants_set(6.0, 0.0, 65.0);           // Swing constants
   chassis.pid_odom_angular_constants_set(6.5, 0.0, 52.5);    // Angular control for odom motions
@@ -458,12 +458,11 @@ void measure_offsets() {
   if (chassis.odom_tracker_right != nullptr) chassis.odom_tracker_right->distance_to_center_set(r_offset);
   if (chassis.odom_tracker_back != nullptr) chassis.odom_tracker_back->distance_to_center_set(b_offset);
   if (chassis.odom_tracker_front != nullptr) chassis.odom_tracker_front->distance_to_center_set(f_offset);
-ez::screen_print("Left: " + util::to_string_with_precision(l_offset) +
-                                "\nRight: " + util::to_string_with_precision(r_offset) +
-                                "\nBack: " + util::to_string_with_precision(b_offset) +
-                                "\nFront: " + util::to_string_with_precision(f_offset),
-                            1);  // Don't override the top Page line
-
+  ez::screen_print("Left: " + util::to_string_with_precision(l_offset) +
+                       "\nRight: " + util::to_string_with_precision(r_offset) +
+                       "\nBack: " + util::to_string_with_precision(b_offset) +
+                       "\nFront: " + util::to_string_with_precision(f_offset),
+                   1);  // Don't override the top Page line
 }
 
 // . . .
@@ -471,6 +470,7 @@ ez::screen_print("Left: " + util::to_string_with_precision(l_offset) +
 // . . .
 
 void NegativeRedSafeQual() {
+  //copied from
   // this puts the arm in loading phase
   nextState();
   // arm task
@@ -479,9 +479,9 @@ void NegativeRedSafeQual() {
   // antijam and colorsort
   pros::Task intakeExtras(intakeExtrasAuto);
 
-  //setting position
- chassis.odom_xyt_set(-51, 8, 230);
- chassis.pid_drive_set(2_in, DRIVE_SPEED);
+  // setting position
+  chassis.odom_xyt_set(-51, 8, 240);
+  chassis.pid_drive_set(2_in, DRIVE_SPEED);
   chassis.pid_wait();
 
   // scoring motion for AWS
@@ -489,8 +489,11 @@ void NegativeRedSafeQual() {
   pros::delay(500);
 
   // move backwards into mogo and clamp
-  chassis.pid_odom_set({{-24, 24}, rev, 100});
+  chassis.pid_odom_set({{-20, 20}, rev, 127});
   outtake();
+  chassis.pid_wait_quick_chain();
+  // slowed backup into mogo
+  chassis.pid_odom_set({{-26, 26}, rev, 70});
   chassis.pid_wait();
   untipState();
   pros::delay(200);
@@ -643,7 +646,8 @@ void NegativeRedSafeElim() {
 }
 
 void PositiveRedSafeQual() {
-  // arm task
+  // copied from: https://www.youtube.com/shorts/7Vq0jS8sU_w
+  //  arm task
   nextState();
   pros::Task arm(armDriver);
 
@@ -653,85 +657,107 @@ void PositiveRedSafeQual() {
   // setting position
   chassis.odom_xyt_set(-59, -10, 300);
 
-  // scoring AWS
+  // scoring motion for AWS
   untipState();
   pros::delay(500);
-  untipState();
 
-  // turn to face mogo
-  chassis.pid_turn_set(290, TURN_SPEED);
-  chassis.pid_wait();
-
-  // move into mogo
-  chassis.pid_odom_set({{-25, -25}, rev, 127}, false);
+  // move backwards into mogo and clamp
+  chassis.pid_odom_set({{-20, -20}, rev, 127});
+  outtake();
+  chassis.pid_wait_quick_chain();
+  // slowed backup into mogo
+  chassis.pid_odom_set({{-26, -26}, rev, 70});
   outtake();
   chassis.pid_wait();
-
-  // clamp
+  untipState();
+  pros::delay(200);
+  // wait and clamp
   autonMogo();
   pros::delay(200);
 
-  // turn towards ladder
-  chassis.pid_turn_set(40, TURN_SPEED);
-  chassis.pid_wait();
-
-  // move towards ladder
-  chassis.pid_odom_set({{-10, -10}, fwd, 127});
-  chassis.pid_wait_quick();
-
-  // drop doinker on first ring
-  autoDoinkerRight();
-  pros::delay(100);
-
-  // turn a little to orient second doinker
-  chassis.pid_turn_set(70, TURN_SPEED);
-  chassis.pid_wait();
-
-  // drop second doinker
-  autoDoinkerLeft();
-  pros::delay(100);
-
-  // back up and turn to line up rings
-  chassis.pid_odom_set({{-30, -30}, rev, DRIVE_SPEED});
-  chassis.pid_wait_quick();
-  chassis.pid_turn_set(90, TURN_SPEED);
-  chassis.pid_wait();
+  // move to the AWS ring stack and get the top ring
+  chassis.pid_odom_set({{-50, 2}, fwd, 127});
+  autonIntakeLift();
   autoIntake();
-
-  // arc move into the line of ring
-  chassis.pid_odom_set({{{-22, -22, 180}, fwd, DRIVE_SPEED},
-                        {{-24, -48, 0}, fwd, DRIVE_SPEED}},
-                       false);
-  chassis.pid_wait_quick();
-
-  // move to the corner quickly
-  tippingState();
-  chassis.pid_odom_set({{-60, -60}, fwd, 127});
-  chassis.pid_wait_quick_chain();
-
-  // move into the corner
-  chassis.pid_odom_set({{-65, -65}, fwd, 60});
   chassis.pid_wait();
 
-  // back up and lift intake
-  chassis.pid_odom_set({{-55, -55}, rev, DRIVE_SPEED}, true);
+  // move to the ladder and doink a ring with right doinker + drop intake
+  chassis.pid_odom_set({{-12, -12}, fwd, 60});
+  chassis.pid_wait_until({-6, -6});
   autonIntakeLift();
+  chassis.pid_wait();
+  autoDoinkerRight();
+  pros::delay(200);
+
+  // back up and retract doinker
+  chassis.pid_odom_set({{-32, -32}, rev, 127});
+  chassis.pid_wait();
+  autoDoinkerRight();
+
+  // move into the ring
+  chassis.pid_odom_set({{-24, -24}, fwd, 127});
   chassis.pid_wait_quick_chain();
 
-  // move gently into corner again
-  chassis.pid_odom_set({{-65, -65}, fwd, 60});
-  chassis.pid_wait();
-
-  // back up + unclamp + retract arm
-  tippingState();
-  chassis.pid_odom_set({{-48, -48}, rev, DRIVE_SPEED});
-  chassis.pid_wait_quick();
+  // rotate around and drop mogo
+  chassis.pid_turn_set(270, 127);
+  Intakekill();
+  chassis.pid_wait_until(180);
   autonMogo();
-
-  // turn + move to the goal rush mogo
-  chassis.pid_turn_set(270, TURN_SPEED);
-  chassis.pid_wait_quick_chain();
-  chassis.pid_odom_set({{-6, -48, 270}, rev, 80}, true);
-  autonIntakeLift();
   chassis.pid_wait();
+
+  // clamp that last mogo (the line mogo)
+  chassis.pid_odom_set({{-6, -48}, rev, 60});
+  chassis.pid_wait();
+  pros::delay(200);
+  autonMogo();
+  pros::delay(200);
+
+  // intake and turn to ladder
+  autoIntake();
+  chassis.pid_turn_set(180, TURN_SPEED, true);
+  chassis.pid_wait();
+
+  // drive into ladder
+  chassis.pid_odom_set({{-6, -20}, fwd, 80});
+  nextState();
+  nextState();
+  chassis.pid_wait();
+}
+
+void RedSAWP() {
+  //copied from https://www.youtube.com/watch?v=h_V-uvW3cuI
+ // this puts the arm in loading phase
+ nextState();
+ // arm task
+ pros::Task arm(armDriver);
+
+ // antijam and colorsort
+ pros::Task intakeExtras(intakeExtrasAuto);
+
+ // setting position
+ chassis.odom_xyt_set(-51, 8, 240);
+ chassis.pid_drive_set(2_in, DRIVE_SPEED);
+ chassis.pid_wait();
+
+ // scoring motion for AWS
+ untipState();
+ pros::delay(500);
+
+ // move backwards into mogo and clamp
+ chassis.pid_odom_set({{-20, 20}, rev, 127});
+ outtake();
+ chassis.pid_wait_quick_chain();
+ // slowed backup into mogo
+ chassis.pid_odom_set({{-26, 26}, rev, 70});
+ chassis.pid_wait();
+ untipState();
+ pros::delay(200);
+ // wait and clamp
+ autonMogo();
+ pros::delay(200);
+
+
+
+
+
 }
