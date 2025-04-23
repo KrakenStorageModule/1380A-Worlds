@@ -222,7 +222,8 @@ void ez_template_extras() {
 void opcontrol() {
   // This is preference to what you like to drive on
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
-  
+  vision.set_integration_time(10);
+  vision.set_led_pwm(100);
   //lady brown callback
 pros::Task armTask(armDriver); //start the arm task
   while (true) {
