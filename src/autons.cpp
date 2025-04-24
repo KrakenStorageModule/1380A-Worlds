@@ -481,25 +481,22 @@ void NegativeRedSafeQual() {
 
   // setting position
   chassis.odom_xyt_set(-51, 8, 240);
-  chassis.pid_drive_set(2_in, DRIVE_SPEED);
+  chassis.pid_drive_set(5_in, DRIVE_SPEED);
   chassis.pid_wait();
 
   // scoring motion for AWS
-  untipState();
-  pros::delay(500);
+  // untipState();
+  // pros::delay(500);
 
   // move backwards into mogo and clamp
-  chassis.pid_odom_set({{-20, 20}, rev, 127});
-  outtake();
-  chassis.pid_wait_quick_chain();
-  // slowed backup into mogo
-  chassis.pid_odom_set({{-26, 26}, rev, 70});
-  chassis.pid_wait();
-  untipState();
-  pros::delay(200);
-  // wait and clamp
-  autonMogo();
-  pros::delay(200);
+  //chassis.pid_odom_set({{-26, 23}, rev, 80});
+  // outtake();
+  // //chassis.pid_wait_quick_chain();
+  // untipState();
+  // pros::delay(200);
+  // // wait and clamp
+  // autonMogo();
+  // pros::delay(200);
 
   // // turn to face the opposing alliance to make next movements easier
   // chassis.pid_turn_set(0, TURN_SPEED);
