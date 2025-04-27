@@ -1,6 +1,9 @@
 #include "subsystems.hpp"
 
+#include "autons.hpp"
 #include "pros/misc.h"
+#include "pros/misc.hpp"
+#include "pros/motor_group.hpp"
 
 pros::Motor intake(11, pros::MotorGears::blue);
 pros::Motor lb(-8, pros::MotorGears::red);
@@ -77,7 +80,7 @@ void backState() {
 
   untipVar = true;
   tippingVar = true;
-    descore = 0;
+  descore = 0;
 }
 
 // moves the state forward 1
@@ -87,7 +90,7 @@ void nextState() {
   // setting them to true "resets" the toggles
   untipVar = true;
   tippingVar = true;
-    descore = 0;
+  descore = 0;
 }
 
 // short lady brown functions
@@ -97,7 +100,7 @@ void untipState() {
   untipVar = !untipVar;
   // resets the tipping toggle
   tippingVar = true;
-    descore = 0;
+  descore = 0;
   if (untipVar == false) {
     target = 40000;
   } else {
@@ -130,17 +133,17 @@ void descoreState() {
     descore = 0;
   } else if (descore == 1) {
     target = 29500;
-   } else if (descore == 2) {
-        target = 31000;
-      }   else if (descore == 3) {
-            target = 32000;
-           }     else if (descore == 4) {
-                target = 33100;
-                }       else if (descore == 5) {
-                        target = 34400;
-                    }         else if (descore == 6) {
-                            target = 35200;
-                        }
+  } else if (descore == 2) {
+    target = 31000;
+  } else if (descore == 3) {
+    target = 32000;
+  } else if (descore == 4) {
+    target = 33100;
+  } else if (descore == 5) {
+    target = 34400;
+  } else if (descore == 6) {
+    target = 35200;
+  }
 }
 
 // Actual logic for lady brown
@@ -155,7 +158,7 @@ void armDriver() {
       tippingState();
     } else if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)) {
       untipState();
-    } else if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)){
+    } else if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)) {
       descoreState();
     }
     // PID calculations
@@ -171,29 +174,109 @@ void armDriver() {
   }
 }
 
+bool intakeLockingOverride = false;  // this is used to override the intake to allow colorsort/antijam
 void intakeDriver() {
-  // intake
-  if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
-    intake.move_voltage(-12000);
-    // outtake
-  } else if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
-    intake.move_voltage(12000);
-    // stop
-  } else {
-    intake.move_voltage(0);
+  if (!intakeLockingOverride) {
+    if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+      if (currState == 1) {
+        intake.move_voltage(-8000);  // slow down intake for lady brown to work
+      } else {
+        intake.move_voltage(-12000);  // intake
+      }
+    } else if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
+      outtake();  // stop
+    } else {
+      Intakekill();
+      // stop
+    }
+  }
+}
+// intake
+void antiJamDriverControl() {
+  const int checkInterval = 5;  // ms per loop
+  const int stallTime = 300;    // ms of sustained low velocity to count as jam
+  const int stallTicks = stallTime / checkInterval;
+
+  int stallCounter = 0;
+  int cooldown = 0;
+
+  while (true) {
+    if (intakeState == 1 && sortingBool == false && intakeLockingOverride == false && currState != 1) {
+      // If velocity is very low, count it as a potential jam
+      if (std::abs(intake.get_actual_velocity()) <= 10 && cooldown == 0) {
+        stallCounter++;
+        if (stallCounter >= stallTicks) {
+          // Jam confirmed, do anti-jam action
+          intakeLockingOverride = true;  // set the override to true
+          outtake();
+          pros::delay(100);               // reverse for 100ms
+          intakeLockingOverride = false;  // set the override to true
+          stallCounter = 0;
+          cooldown = 500 / checkInterval;  // cooldown for 500ms
+        }
+      } else {
+        stallCounter = 0;
+      }
+    } else {
+      stallCounter = 0;
+    }
+
+    if (cooldown > 0) cooldown--;
+    pros::delay(checkInterval);
+  }
+}
+// this is the display for temp
+pros::MotorGroup left_drive({-19, -17, 18});
+pros::MotorGroup right_drive({12, 13, -14});
+void tempDisplay() {
+  // Variables for temperature readings
+  int avgTempLeft = 0;
+  int avgTempRight = 0;
+  int avgTempIntake = 0;
+  int returning = 0;
+  int avgTempLb = 0;
+  int avgTempTotal = 0;
+  int batteryLevel = ((pros::battery::get_capacity()) / 1100) * 100;
+  while (true) {
+    // Averaging each dt half for left and right drive motors
+    avgTempLeft = (left_drive.get_temperature(0) +
+                   left_drive.get_temperature(1) +
+                   left_drive.get_temperature(2)) /
+                  3;
+
+    avgTempRight = (right_drive.get_temperature(0) +
+                    right_drive.get_temperature(1) +
+                    right_drive.get_temperature(2)) /
+                   3;
+    returning = (avgTempLeft + avgTempRight) / 2; //avg
+    returning = (returning * 1.8) + 32;  // Convert to Fahrenheit
+    // Averaging the intake and lady brown motor temperatures
+    avgTempIntake = intake.get_temperature();
+    avgTempLb = lb.get_temperature();
+
+    // Convert to F while averaging both sides
+
+    // Convert temperatures to string and display
+    controller.set_text(0, 0, "Drive: " + std::to_string(int(returning)) + "F " + "  " + "Intake: " +
+                         std::to_string(int(avgTempIntake)) + "F " + "  " + "LB: " +
+                         std::to_string(int(avgTempLb)) + "F ");
+    // controller.set_text(1, 0, "Right: " + std::to_string(int(avgTempRight)) + "F ");
+    // controller.set_text(2, 0, "Intake: " + std::to_string(int(avgTempIntake)) + "F ");
+    // controller.set_text(3, 0, "LB: " + std::to_string(int(avgTempLb)) + "F ");
+    // controller.set_text(4, 0, "Rings Ejected: " + std::to_string(int(ringsEjected)));
+    // controller.set_text(5, 0, "Battery: " + std::to_string(int(batteryLevel)) + "% ");
+    pros::delay(50);  // Small delay to avoid overload
   }
 }
 
-void intakeExtrasDriver() {
-}
 // Chassis constructor
 ez::Drive chassis(
     // These are your drive motors, the first motor is used for sensing!
     {-19, -17, 18},  // Left Chassis Ports (negative port will reverse it!)
     {12, 13, -14},   // Right Chassis Ports (negative port will reverse it!)
 
-    16,                                        // IMU Port
+    6,                                         // IMU Port
     3.25,                                      // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     450);                                      // Wheel RPM = cartridge * (motor gear / wheel gear)
 ez::tracking_wheel horiz_tracker(2, 2, -2.5);  // This tracking wheel is perpendicular to the drive wheels
-ez::tracking_wheel vert_tracker(14, 2, 0);    // This tracking wheel is parallel to the drive wheels
+ez::tracking_wheel vert_tracker(14, 2, 0);     // This tracking wheel is parallel to the drive wheels

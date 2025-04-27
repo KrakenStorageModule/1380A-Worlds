@@ -2,6 +2,7 @@
 
 #include "EZ-Template/api.hpp"
 #include "api.h"
+#include "subsystems.hpp"
 
 extern Drive chassis;
 
@@ -42,4 +43,7 @@ void nextState();
 void untipState();
 void tippingState();
 void intakeExtrasDriver();
+void tempDisplay();
+extern bool intakeLockingOverride; // this is used to override the intake to allow colorsort/antijam
+void antiJamDriverControl();
 

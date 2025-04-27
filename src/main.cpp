@@ -1,8 +1,10 @@
 #include "main.h"
+
 #include "EZ-Template/util.hpp"
+#include "autons.hpp"
 #include "pros/rtos.hpp"
 #include "subsystems.hpp"
-#include "autons.hpp"
+
 /////
 // For installation, upgrading, documentations, and tutorials, check out our website!
 // https://ez-robotics.github.io/EZ-Template/
@@ -17,40 +19,32 @@
 void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
-  chassis.pid_targets_reset();                // Resets PID targets to 0
-  chassis.drive_imu_reset();                  // Reset gyro position to 0
-  chassis.drive_sensor_reset();               // Reset drive sensors to 0
-  pros::delay(500);  // Stop the user from doing anything while legacy ports configure
+  chassis.pid_targets_reset();   // Resets PID targets to 0
+  chassis.drive_imu_reset();     // Reset gyro position to 0
+  chassis.drive_sensor_reset();  // Reset drive sensors to 0
+  pros::delay(500);              // Stop the user from doing anything while legacy ports configure
 
-  // Look at your horizontal tracking wheel and decide if it's in front of the midline of your robot or behind it
-  //  - change `back` to `front` if the tracking wheel is in front of the midline
-  //  - ignore this if you aren't using a horizontal tracker
-  // chassis.odom_tracker_back_set(&horiz_tracker);
-  // Look at your vertical tracking wheel and decide if it's to the left or right of the center of the robot
-  //  - change `left` to `right` if the tracking wheel is to the right of the centerline
-  //  - ignore this if you aren't using a vertical tracker
-  // chassis.odom_tracker_left_set(&vert_tracker);
-
+  // Configure your motor brake modes
+  intake.set_brake_mode(MOTOR_BRAKE_COAST);  // Intake motor brake mode
+  lb.set_brake_mode(MOTOR_BRAKE_HOLD);       // Lady Brown motor brake mode
   // Configure your chassis controls
-  chassis.opcontrol_curve_buttons_toggle(false);   // Enables modifying the controller curve with buttons on the joysticks
+  chassis.opcontrol_curve_buttons_toggle(false);  // Enables modifying the controller curve with buttons on the joysticks
   chassis.opcontrol_drive_activebrake_set(0.0);   // Sets the active brake kP. We recommend ~2.  0 will disable.
   chassis.opcontrol_curve_default_set(0.0, 0.0);  // Defaults for curve. If using tank, only the first parameter is used. (Comment this line out if you have an SD card!)
 
   // Set the drive to your own constants from autons.cpp!
   default_constants();
 
-
   // These are already defaulted to these buttons, but you can change the left/right curve buttons here!
   // chassis.opcontrol_curve_buttons_left_set(pros::E_CONTROLLER_DIGITAL_LEFT, pros::E_CONTROLLER_DIGITAL_RIGHT);  // If using tank, only the left side is used.
   // chassis.opcontrol_curve_buttons_right_set(pros::E_CONTROLLER_DIGITAL_Y, pros::E_CONTROLLER_DIGITAL_A);
 
   // Autonomous Selector using LLEMU
-  ez::as::auton_selector.autons_add({
-      {"Red Negative Elim (No Rush) [1+6]",  NegativeRedSafeElim},
-      {"Red Negative Qual (No Rush) [1+6]", NegativeRedSafeQual},
-      {"Red Positive Qual (No Rush) [1+2+1]", PositiveRedSafeQual},
-      {"Red Solo AWP [1+3+2]", RedSAWP}
-  });
+  ez::as::auton_selector.autons_add({{"Red Negative Elim (No Rush) [1+6]", NegativeRedSafeElim},
+                                     {"Red Negative Qual (No Rush) [1+6]", NegativeRedSafeQual},
+                                     {"Red Negative Qual (Rush) [1+6]", RedRushNeg},
+                                     {"Red Positive Qual (No Rush) [1+2+1]", PositiveRedSafeQual},
+                                     {"Red Solo AWP [1+3+2]", RedSAWP}});
 
   // Initialize chassis and auton selector
   chassis.initialize();
@@ -92,11 +86,17 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-  vision.set_integration_time(10);
+  controller.clear();  // Clear the controller screen
+
+  vision.set_integration_time(5);  // Set the integration time for the vision sensor
   vision.set_led_pwm(100);
-    chassis.pid_targets_reset();                // Resets PID targets to 0
-  chassis.drive_imu_reset();                  // Reset gyro position to 0
-  chassis.drive_sensor_reset();               // Reset drive sensors to 0
+  chassis.pid_targets_reset();             // Resets PID targets to 0
+  chassis.drive_imu_reset();               // Reset gyro position to 0
+  chassis.drive_sensor_reset();            // Reset drive sensors to 0
+  pros::Task controllerTask(tempDisplay);  // start the controller task
+  // Configure your motor brake modes
+  intake.set_brake_mode(MOTOR_BRAKE_COAST);   // Intake motor brake mode
+  lb.set_brake_mode(MOTOR_BRAKE_HOLD);        // Lady Brown motor brake mode
   chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold.  This helps autonomous consistency
 
   /*
@@ -126,8 +126,6 @@ void screen_print_tracker(ez::tracking_wheel *tracker, std::string name, int lin
     tracker_width = "  width: " + util::to_string_with_precision(tracker->distance_to_center_get());  // Make text for the distance to center
   }
   ez::screen_print(tracker_value + tracker_width, line);  // Print final tracker text
-
-
 }
 
 /**
@@ -224,23 +222,30 @@ void ez_template_extras() {
 void opcontrol() {
   // This is preference to what you like to drive on
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
+  // Configure your motor brake modes
+  intake.set_brake_mode(MOTOR_BRAKE_COAST);  // Intake motor brake mode
+  lb.set_brake_mode(MOTOR_BRAKE_HOLD);       // Lady Brown motor brake mode
   vision.set_integration_time(10);
   vision.set_led_pwm(100);
-  //lady brown callback
-pros::Task armTask(armDriver); //start the arm task
+  // lady brown callback
+  pros::Task armTask(armDriver);  // start the arm task
+pros::Task intakeTask(antiJamDriverControl);  // start the antijam task
+  // controller task
+  pros::Task controllerTask(tempDisplay);  // start the controller task
+  controller.clear();  // Clear the controller screen
+
   while (true) {
     // Gives you some extras to make EZ-Template ezier
-    //ez_template_extras();
+    // ez_template_extras();
 
     chassis.opcontrol_arcade_standard(ez::SPLIT);  // Tank control
 
-    //intake functions
+    // intake functions
     intakeDriver();
 
-    //piston driver code
+    // piston driver code
     pneumaticDriverControl();
 
-    
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
 }

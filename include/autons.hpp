@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include "autons.hpp"
 #include "subsystems.hpp"
 void default_constants();
 
@@ -34,5 +35,15 @@ void NegativeRedSafeQual();
 void PositiveRedSafeQual();
 void RedSAWP();
 
+void antiJam();
+void colorSort();
 
+void autoIntake();
+void outtake();
+void Intakekill();  
+
+void RedRushNeg();
 extern int color;
+extern int ringsEjected;
+extern int intakeState;  // 0 = off, 1 = intake, 2 = outtake
+extern bool sortingBool;  // true if sorting is active
