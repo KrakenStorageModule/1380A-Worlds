@@ -90,6 +90,7 @@ void autonomous() {
 
   vision.set_integration_time(5);  // Set the integration time for the vision sensor
   vision.set_led_pwm(100);
+
   chassis.pid_targets_reset();             // Resets PID targets to 0
   chassis.drive_imu_reset();               // Reset gyro position to 0
   chassis.drive_sensor_reset();            // Reset drive sensors to 0
@@ -225,7 +226,7 @@ void opcontrol() {
   // Configure your motor brake modes
   intake.set_brake_mode(MOTOR_BRAKE_COAST);  // Intake motor brake mode
   lb.set_brake_mode(MOTOR_BRAKE_HOLD);       // Lady Brown motor brake mode
-  vision.set_integration_time(10);
+  vision.set_integration_time(3);
   vision.set_led_pwm(100);
   // lady brown callback
   pros::Task armTask(armDriver);  // start the arm task

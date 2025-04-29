@@ -7,7 +7,6 @@
 #include "pros/rtos.hpp"
 #include "subsystems.hpp"
 
-
 // These are out of 127
 const int DRIVE_SPEED = 110;
 const int TURN_SPEED = 90;
@@ -50,12 +49,14 @@ void default_constants() {
 
   chassis.pid_angle_behavior_set(ez::shortest);  // Changes the default behavior for turning, this defaults it to the shortest path there
 }
-int intakeState = 0;  // 0 = off, 1 = intake, 2 = outtake
+int intakeState = 0;      // 0 = off, 1 = intake, 2 = outtake
+bool ringStored = false;  // true if ring is stored in intake
 
 // call this to set the full intake to intake indefinitely until another intake function is called
 void autoIntake() {
   intake.move_voltage(-1200000);
   intakeState = 1;
+  bool ringStored = false;  // true if ring is stored in intake
 }
 
 // call this to set the full intake to outtake indefinitely until another intake function is called
@@ -81,7 +82,7 @@ void antiJam() {
   int cooldown = 0;
 
   while (true) {
-    if (intakeState == 1 && sortingBool == false) {
+    if (intakeState == 1 && sortingBool == false && currState != 1) {
       // If velocity is very low, count it as a potential jam
       if (std::abs(intake.get_actual_velocity()) <= 10 && cooldown == 0) {
         stallCounter++;
@@ -138,11 +139,16 @@ void colorSort() {
     ez::screen_print(std::to_string(intake.get_position()));
     ez::screen_print(std::to_string(ringsEjected), 2);
     ez::screen_print(std::to_string(vision.get_proximity()), 3);
+
     if (currState != 1 && intakeState == 1) {
-      if (!ejecting && isWrongRing() && vision.get_proximity() > 100) {
+      if (ringStored == true) {
+        if (distanceSensor.get_distance() < 50) {
+          Intakekill();
+        }
+      } else if (!ejecting && isWrongRing() && vision.get_proximity() > 100) {
         ejecting = true;
         sortingBool = true;
-        ejectTarget = intake.get_position() - ejectRotation;
+        ejectTarget = intake.get_position() - ejectRotation;  // because the intake is negative
       } else if (ejecting) {
         // Eject only based on motor position
         if (intake.get_position() <= ejectTarget) {
@@ -159,7 +165,7 @@ void colorSort() {
       ejecting = false;
     }
 
-    pros::delay(10);
+    pros::delay(5);
   }
 }
 
@@ -188,7 +194,6 @@ void autonIntakeLift() {
 void NegativeRedSafeQual() {
   // copied from 2011B
   // CHANGELOG
-
 
   //  this puts the arm in loading phase
   nextState();
@@ -523,6 +528,8 @@ void RedSAWP() {
 }
 
 void RedRushNeg() {
+  // remember that !ringStored stores a ring in the intake
+
   // arm task
   pros::Task arm(armDriver);
 
@@ -536,63 +543,98 @@ void RedRushNeg() {
   // setting position
   chassis.odom_xyt_set(-51, 30, 70);
 
-  //rush
-  chassis.pid_odom_set(48_in, 127, false);
+  // rush
+  chassis.pid_odom_set(42, 127, false);
   autoDoinkerLeft();
   autoIntake();
+  ringStored = true;
   chassis.pid_wait_quick_chain();
 
-  // //backup into mogo and clamp
-  // chassis.pid_odom_set({{-26, 18}, rev, 60});
-  // chassis.pid_wait_until(2_in);
-  // Intakekill();
-  // chassis.pid_wait();
-  // pros::delay(200);  // allow mogo to settle into bot
-  // // wait and clamp
-  // autonMogo();
-  // pros::delay(200);  // delay to allow mogo to clamp
-  // autoIntake();
+  // backup into mogo and clamp
+  chassis.pid_odom_set({{-26, 23, 30}, rev, 80});
+  chassis.pid_wait_quick();
+  // wait and clamp
+  autonMogo();
+  pros::delay(100);  // delay to allow mogo to clamp
+  autoIntake();      // turn intake back on
 
-  // // turn towards the ring stack, raise the doinker, and move towards the ring stack
-  // chassis.pid_turn_set(0, 127);
-  // chassis.pid_wait();
-  // // retract doinker
-  // autoDoinkerLeft();
-  // // move into the 2-ring line
-  // chassis.pid_odom_set({{-26, 55}, fwd, 127});
-  // chassis.pid_wait_quick();
+  // turn towards the ring stack, raise the doinker, and move towards the ring stack
+  chassis.pid_turn_set(0, 127);
+  chassis.pid_wait();
+  // retract doinker
+  autoDoinkerLeft();
+  autoIntake();        // turn intake back on
+  ringStored = false;  // turn off ring stored
 
-  // // move into the corner + arm parallel to the ground
-  // chassis.pid_odom_set({{-65, 65, 330}, fwd, 127});
+  // move into the 2-ring line
+  chassis.pid_odom_set({{-26, 58}, fwd, 127});
+  chassis.pid_wait_quick_chain();
+  chassis.pid_swing_set(ez::RIGHT_SWING, 250, 127); //added at night after tuning autos, so could fuck it up
+  chassis.pid_wait_quick_chain();
+
+  // move to point near corner and align to corner
+  chassis.pid_odom_set({{-50 , 50}, fwd, 127}); //prolly need to tune this
+  chassis.pid_wait_quick_chain();
+  chassis.pid_swing_set(ez::LEFT_SWING, 330, 127); //swing to align to corner
+  chassis.pid_wait_quick_chain();
+  chassis.pid_odom_set(18_in, 127, false); //actual corner movement
+  chassis.pid_wait_quick_chain();
+
+  // chassis.pid_odom_set({{-70, 70}, fwd, 127});
   // target = 33000;
   // chassis.pid_wait();
-  // pros::delay(200);  // allow intake to pick up ring
+  //pros::delay(150);  // allow intake to pick up ring
 
-  // //back it up back it up
-  // chassis.pid_odom_set({{-55, 55}, rev, 127});
-  // chassis.pid_wait_quick();
-  // autonIntakeLift();
+  // back it up back it up
+  chassis.pid_odom_set(-10_in, 127, false);
+  chassis.pid_wait_quick();
+  autonIntakeLift();
 
-  // //slam into the corner again
-  // chassis.pid_odom_set({{-65, 65}, fwd, 127});
-  // autoIntake();
-  // chassis.pid_wait();
+  // slam into the corner again
+  chassis.pid_odom_set(15_in, 127, false);
+  autoIntake();
+  chassis.pid_wait_quick();
 
+  // reverse and retract arm
+  chassis.pid_odom_set({{-48, 48}, rev, 127});
+  target = 14500;
+  chassis.pid_wait_quick_chain();
 
-  
+  // turn to ring stack
+  chassis.pid_turn_set(180, 127);
+  chassis.pid_wait_quick_chain();
 
+  // move through preload and into ring stack
+  chassis.pid_odom_set({{{-48, 24}, fwd, 127}, {{-38, 10, 180}, fwd, 50}}, false);
+  autoIntake();
+  chassis.pid_wait_until_index(0);
+  nextState();  // lift lady brown after intaking that preload
+  chassis.pid_wait();
+
+  autonIntakeLift();  // drop intake lift to intake ring stack into lady brown
+  // pros::delay(200); //idk if this is needed, but it takes a lot of time
+
+  // turn to face aws
+  chassis.pid_turn_set(270, 127);
+  autoDoinkerRight();  // used to sweep the blue ring away
+  chassis.pid_wait_quick_chain();
+
+  autoDoinkerRight();  // lift doinker
+  Intakekill();        // kill intake
+
+  chassis.pid_odom_set({{-62, 10}, fwd, 127}, false);  // move to AWS
+  chassis.pid_wait_quick_chain();                           // wait for motion to finish
+  chassis.pid_odom_set(-7_in, 127, false);           // back up
+  chassis.pid_wait_quick();
+  untipState();                   // score
+  pros::delay(400);
+
+  chassis.pid_turn_set(90, 127); // turn to face the ladder
+  untipState(); 
+  chassis.pid_wait_quick_chain();
+
+  chassis.pid_odom_set({{-25, 10}, fwd, 127}); // move to the ladder
+  nextState(); 
+  nextState(); // lift lady brown
+  chassis.pid_wait();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

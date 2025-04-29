@@ -18,7 +18,7 @@ extern pros::adi::DigitalOut intakeLift; // front stage intake lift piston
 
 extern pros::Optical vision; // color sensor
 extern pros::Rotation lbSensor; // lady brown rot sensor
-
+extern pros::Distance distanceSensor; // intake stop distance sensor
 extern pros::Controller controller; // controller
 
 extern bool mogoToggle; // toggle for mogo clamp

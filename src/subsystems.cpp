@@ -1,6 +1,7 @@
 #include "subsystems.hpp"
 
 #include "autons.hpp"
+#include "pros/distance.hpp"
 #include "pros/misc.h"
 #include "pros/misc.hpp"
 #include "pros/motor_group.hpp"
@@ -23,7 +24,7 @@ bool intakeLiftToggle = false;  // toggle for intake lift
 // sensors
 pros::Optical vision(7);     // color sensor
 pros::Rotation lbSensor(3);  // lady brown rot sensor
-
+pros::Distance distanceSensor(4); //intake stop distance sensor
 // controller
 pros::Controller controller(pros::E_CONTROLLER_MASTER);  // controller
 
@@ -55,7 +56,7 @@ void pneumaticDriverControl() {
 // U change the position of each state by changing the number in states[numstates] = {};
 const int numStates = 3;
 // make sure these are in centidegrees (1 degree = 100 centidegrees)
-int states[numStates] = {14500, 18500, 30000};  // Bigger number = closer to stowed
+int states[numStates] = {14500, 18300, 30000};  // Bigger number = closer to stowed
 int currState = 0;                              // current state (index of the array)
 int target = 14500;                             // this must be the same as whatever the stow state is!
 // PID constants => should be left alone
@@ -150,13 +151,13 @@ void descoreState() {
 void armDriver() {
   while (true) {
     // basically the button logic
-    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
+    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)) {
       nextState();
     } else if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)) {
       backState();
     } else if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
       tippingState();
-    } else if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)) {
+    } else if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
       untipState();
     } else if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)) {
       descoreState();
@@ -179,7 +180,7 @@ void intakeDriver() {
   if (!intakeLockingOverride) {
     if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
       if (currState == 1) {
-        intake.move_voltage(-8000);  // slow down intake for lady brown to work
+        intake.move_voltage(-10000);  // slow down intake for lady brown to work
       } else {
         intake.move_voltage(-12000);  // intake
       }
@@ -257,9 +258,9 @@ void tempDisplay() {
     // Convert to F while averaging both sides
 
     // Convert temperatures to string and display
-    controller.set_text(0, 0, "Drive: " + std::to_string(int(returning)) + "F " + "  " + "Intake: " +
-                         std::to_string(int(avgTempIntake)) + "F " + "  " + "LB: " +
-                         std::to_string(int(avgTempLb)) + "F ");
+    controller.set_text(0, 0, "Drive: " + std::to_string(int(returning)) + "F\n" + "Intake: " +
+                         std::to_string(int(avgTempIntake)) + "F\n" + "LB: " +
+                         std::to_string(int(avgTempLb)) + "F");
     // controller.set_text(1, 0, "Right: " + std::to_string(int(avgTempRight)) + "F ");
     // controller.set_text(2, 0, "Intake: " + std::to_string(int(avgTempIntake)) + "F ");
     // controller.set_text(3, 0, "LB: " + std::to_string(int(avgTempLb)) + "F ");
