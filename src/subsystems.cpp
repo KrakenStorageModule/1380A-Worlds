@@ -31,7 +31,7 @@ double armIntegral = 0;              // sum of all errors
 double derivative = 0;               // difference between current and previous error
 double output = 0;                   // final output to the lady brown
 int descore = 0;                     // bool for descore positions
-bool intakeLockingOverride = false;  // this is used to override the intake to allow colorsort/antijam to work
+bool intakeLockingOverride = false;  // this is used to override the driver to allow colorsort/antijam to work. 
 
 // sensors
 pros::Optical vision(7);           // color sensor
@@ -166,7 +166,7 @@ void armDriver() {
       descoreState();
     }
     // PID calculations
-    error = target - lbSensor.get_position();                        // difference between target and current position
+    error = target - lbSensor.get_position();                        // error = difference between target and current position
     armIntegral += error;                                            // sum of all errors
     derivative = error - prevError;                                  // difference between current and previous error
     output = (kP * error) + (kI * armIntegral) + (kD * derivative);  // final output to the lady brown
@@ -203,11 +203,11 @@ void arm() {
     error = target - lbSensor.get_position();                        // difference between target and current position
     armIntegral += error;                                            // sum of all errors
     derivative = error - prevError;                                  // difference between current and previous error
-    output = (kP * error) + (kI * armIntegral) + (kD * derivative);  // final output to the lady brown
+    output = (kP * error) + (kI * armIntegral) + (kD * derivative);  // final PID output to the lady brown
 
     // this is the "Bang-Bang" Portion
     // If the arm is not within a range of the target, it sends full voltage to the arm
-    if (error > 500) {            // Checks if outside of Bang-Bang Exit Range
+    if (error > 500) {            // Checks if outside of Bang-Bang Exit Range (pid kicks in when within 500 centidegrees of target)
       if (error > 0) {            // Checks if error is (+) or (-)
         lb.move_voltage(120000);  // Full Speed in direction of target. Might need to make (-) depending on motor orientation
       } else {
