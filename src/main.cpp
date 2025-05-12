@@ -5,10 +5,10 @@
 #include "pros/rtos.hpp"
 #include "subsystems.hpp"
 
-/////
-// For installation, upgrading, documentations, and tutorials, check out our website!
-// https://ez-robotics.github.io/EZ-Template/
-/////
+// IMPORTANT WEBSITES!!!
+//  https://ez-robotics.github.io/EZ-Template/ -> IMPORTANT WEBSITE FOR EZ-TEMPLATE
+//  https://path.jerryio.com/ -> IMPORTANT WEBSITE FOR PATHING
+// https://pros.cs.purdue.edu/v5/pros-4/api.html -> API. This is all the commands you can use for PROS. Read it. It helps.
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -24,29 +24,33 @@ void initialize() {
   chassis.drive_sensor_reset();  // Reset drive sensors to 0
   pros::delay(500);              // Stop the user from doing anything while legacy ports configure
 
-  // Configure your motor brake modes
+  // Configure your motor brake modes here.
   intake.set_brake_mode(MOTOR_BRAKE_COAST);  // Intake motor brake mode
   lb.set_brake_mode(MOTOR_BRAKE_HOLD);       // Lady Brown motor brake mode
-  // Configure your chassis controls
+
+  // Configure your chassis controls -> NO TOUCH!
   chassis.opcontrol_curve_buttons_toggle(false);  // Enables modifying the controller curve with buttons on the joysticks
   chassis.opcontrol_drive_activebrake_set(0.0);   // Sets the active brake kP. We recommend ~2.  0 will disable.
   chassis.opcontrol_curve_default_set(0.0, 0.0);  // Defaults for curve. If using tank, only the first parameter is used. (Comment this line out if you have an SD card!)
 
-  // Set the drive to your own constants from autons.cpp!
+  // Set the drive to your own constants from autons.cpp! -> NO TOUCH!
   default_constants();
 
-  // These are already defaulted to these buttons, but you can change the left/right curve buttons here!
-  // chassis.opcontrol_curve_buttons_left_set(pros::E_CONTROLLER_DIGITAL_LEFT, pros::E_CONTROLLER_DIGITAL_RIGHT);  // If using tank, only the left side is used.
-  // chassis.opcontrol_curve_buttons_right_set(pros::E_CONTROLLER_DIGITAL_Y, pros::E_CONTROLLER_DIGITAL_A);
-
   // Autonomous Selector using LLEMU
-  ez::as::auton_selector.autons_add({{"Red Negative Elim (No Rush) [1+6]", NegativeRedSafeElim},
+  // {"Screen Name", FunctionName} <- Format for adding a new auton
+  ez::as::auton_selector.autons_add({{"EXAMPLES", exampleMovements},
+                                     {"Red Negative Elim (No Rush) [1+6]", NegativeRedSafeElim},
                                      {"Red Negative Qual (No Rush) [1+6]", NegativeRedSafeQual},
-                                     {"Red Negative Qual (Rush) [1+6]", RedRushNeg},
-                                     {"Red Positive Qual (No Rush) [1+2+1]", PositiveRedSafeQual},
-                                     {"Red Solo AWP [1+3+2]", RedSAWP}});
+                                     {"Blue Positive Qual (No Rush) [1+5]", PositiveBlueSafeQual},
+                                     {"Blue Negative Qual (No Rush) [1+5]", NegativeBlueQual},
 
-  // Initialize chassis and auton selector
+                                     {"Red Positive Qual (No Rush) [1+5]", PositiveRedQual},
+                                     {"Red Positive Elim (No Rush) [1+5]", PositiveRedElim},
+                                     {"Blue Positive Elim (No Rush) [1+5]", PositiveBlueElim}
+
+  });  
+
+  // Initialize chassis and auton selector -> NO TOUCH!!!
   chassis.initialize();
   ez::as::initialize();
   master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
@@ -58,7 +62,9 @@ void initialize() {
  * the robot is enabled, this task will exit.
  */
 void disabled() {
-  // . . .
+  //This is useless unless you want a piston to close/open when the robot is disabled
+  //this can be useful for last second hangs like Over Under, where you could drift into the hang bar -> 
+  //and the bot would go up AFTER the match ended
 }
 
 /**
@@ -71,7 +77,7 @@ void disabled() {
  * starts.
  */
 void competition_initialize() {
-  // . . .
+  //Pretty Much useless NGL
 }
 
 /**
@@ -86,33 +92,26 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-  controller.clear();  // Clear the controller screen
+  controller.clear();  // Clear the controller screen. Please avoid touch unless u mess w/controller display :)
 
+  //Feel free to remove this if you don't use an optical sensor
   vision.set_integration_time(5);  // Set the integration time for the vision sensor
-  vision.set_led_pwm(100);
+  vision.set_led_pwm(100); //Turns the optical sensor's lights on.
 
+  //NO TOUCH!!!
   chassis.pid_targets_reset();             // Resets PID targets to 0
   chassis.drive_imu_reset();               // Reset gyro position to 0
   chassis.drive_sensor_reset();            // Reset drive sensors to 0
+
+  //This is just what lets the controller temp display run during auto. Feel free to remove if desired.
   pros::Task controllerTask(tempDisplay);  // start the controller task
-  // Configure your motor brake modes
+
+  // Configure your motor brake modes here. Feel free to alter
   intake.set_brake_mode(MOTOR_BRAKE_COAST);   // Intake motor brake mode
   lb.set_brake_mode(MOTOR_BRAKE_HOLD);        // Lady Brown motor brake mode
+
+  //NO TOUCH!!!
   chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold.  This helps autonomous consistency
-
-  /*
-  Odometry and Pure Pursuit are not magic
-
-  It is possible to get perfectly consistent results without tracking wheels,
-  but it is also possible to have extremely inconsistent results without tracking wheels.
-  When you don't use tracking wheels, you need to:
-   - avoid wheel slip
-   - avoid wheelies
-   - avoid throwing momentum around (super harsh turns, like in the example below)
-  You can do cool curved motions, but you have to give your robot the best chance
-  to be consistent
-  */
-
   ez::as::auton_selector.selected_auton_call();  // Calls selected auton from autonomous selector
 }
 
@@ -219,33 +218,42 @@ void ez_template_extras() {
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
-
+//DRIVER CONTROL CODE HERE
 void opcontrol() {
-  // This is preference to what you like to drive on
+  // This is preference to what you like to drive on. I suggest no touch
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
-  // Configure your motor brake modes
+  // Configure your motor brake modes. Feel free to alter
   intake.set_brake_mode(MOTOR_BRAKE_COAST);  // Intake motor brake mode
   lb.set_brake_mode(MOTOR_BRAKE_HOLD);       // Lady Brown motor brake mode
-  vision.set_integration_time(3);
-  vision.set_led_pwm(100);
+  vision.set_integration_time(3); //feel free to alter
+  vision.set_led_pwm(100);  //feel free to alter
+  
+  //you can alter this section no issue
   // lady brown callback
-  pros::Task armTask(armDriver);  // start the arm task
-pros::Task intakeTask(antiJamDriverControl);  // start the antijam task
+  pros::Task armTask(armDriver);                // start the arm task
+  //^this is run as a task because it needs to be called in autos and in driver control (and run throughout the ENTIRE match)
+  pros::Task intakeTask(antiJamDriverControl);  // start the antijam task
+  //^this is run as a task because it operates on it's own time and would stop the rest of the controls from running if called in the while loop
+
+  //feel free to alter this chunk
   // controller task
   pros::Task controllerTask(tempDisplay);  // start the controller task
-  controller.clear();  // Clear the controller screen
-
+  //^Run as a task because of the slow update time (controller can only update every 50 ms)
+  controller.clear(); //clears controller screen to let display run
+  currState = 0; //this sets index to 0
+  target = states[currState]; //this actually tells the lady brown to move to stowed
   while (true) {
-    // Gives you some extras to make EZ-Template ezier
-    // ez_template_extras();
+    chassis.opcontrol_arcade_standard(ez::SPLIT);  // Split Arcade
+    //These next 2 lines are controller options 
+    // chassis.opcontrol_tank(); //Tank Control
+    // chassis.opcontrol_arcade_standard(ez::SINGLE);  // Single Stick Arcade
 
-    chassis.opcontrol_arcade_standard(ez::SPLIT);  // Tank control
-
+    //You can alter the next 2 chunks 
     // intake functions
-    intakeDriver();
+    intakeDriver(); //This is not run as tasks because they do not need their own timescale
 
     // piston driver code
-    pneumaticDriverControl();
+    pneumaticDriverControl(); //This is not run as tasks because they do not need their own timescale
 
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
