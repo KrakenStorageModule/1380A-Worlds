@@ -994,7 +994,6 @@ void exampleMovements() {
   to be consistent
   */
 
-
   // this is how to set the initial position:
   chassis.odom_xyt_set(0, 0, 0);  // x, y, theta in degrees
 
@@ -1041,6 +1040,7 @@ void exampleMovements() {
                        false); //This will go through each point in the list sequentially
   chassis.pid_swing_set(ez::LEFT_SWING, 90, 127); // swerve left 90 degrees at 127 speed
   chassis.pid_swing_set(ez::LEFT_SWING, 90, 80, 20, false); // makes wider arc 
+  
   // Example of absolute movement used in an auto ;) (Comment out the rest of the auto and run this to see it in action)
     chassis.odom_xyt_set(0, 0, 0);  // set the initial position of the robot to (0, 0) at 0 degrees
     chassis.pid_odom_set({{0, 15}, fwd, 127}, false); // move to the point (0, 15) at 127 speed
