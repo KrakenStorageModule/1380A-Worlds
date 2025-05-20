@@ -6,7 +6,6 @@
 #include "EZ-Template/util.hpp"
 #include "main.h"
 #include "pros/abstract_motor.hpp"
-#include "pros/rtos.h"
 #include "pros/rtos.hpp"
 #include "subsystems.hpp"
 
@@ -76,7 +75,7 @@ bool sortingBool = false;  // true if sorting is active, used for antijam to che
 void autoIntake() {
   intake.move_voltage(-1200000);  // only neccessary part
   intakeState = 1;
-  bool ringStored = false;  // true if ring is stored in intake
+  ringStored = false;  // true if ring is stored in intake
 }
 
 // call this to set the intake to outtake indefinitely until another intake function is called

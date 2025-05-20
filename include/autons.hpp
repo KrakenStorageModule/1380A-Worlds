@@ -7,6 +7,7 @@
 
 //DONT TOUCH THIS
 void default_constants();
+
 //Put your helper functions here
 void autoIntake();
 void autoOuttake();
